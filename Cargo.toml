@@ -1,0 +1,26 @@
+[package]
+name = "velocitempo-api"
+version = "0.1.0"
+edition = "2024"
+
+# Release binary name; the package keeps the -api suffix next to ../ui.
+[[bin]]
+name = "velocitempo"
+path = "src/main.rs"
+
+[dependencies]
+axum = "0.8.9"
+dirs = "7.0.0"
+open = { version = "5.4.4", optional = true }
+reqwest = { version = "0.13.5", default-features = false, features = ["json", "query", "rustls"] }
+rust-embed = { version = "8.12.0", features = ["mime-guess"], optional = true }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+thiserror = "2.0.21"
+tokio = { version = "1.53.2", features = ["full"] }
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.23", features = ["env-filter"] }
+
+[features]
+# Serve ../ui/dist (built first) from the binary; off for development, where Vite serves the UI.
+embed-ui = ["dep:rust-embed", "dep:open"]
