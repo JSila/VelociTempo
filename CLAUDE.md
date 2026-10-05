@@ -40,8 +40,8 @@ Jira/Tempo) and `VELOCITEMPO_API=http://localhost:3001 yarn dev --port <free>`. 
   (reference: "HTTP Request" card on https://preview.tabler.io/form-elements.html). Keep `src/index.css` minimal.
 - Buttons use plain `btn` (secondary actions) / `btn btn-primary` (submit); no ghost/icon buttons. Busy buttons use
   Tabler's `btn-loading` (spinner only, width kept, Ladda-like fade from `index.css`) plus `disabled` + `aria-busy`.
-  Exceptions (at the user's request): the header "Settings" button is `btn border-0 shadow-none`, and footer "Clear"
-  is `btn btn-link`.
+  Exceptions (at the user's request): the header Settings button is an icon button (`btn btn-icon`, inline Tabler
+  "settings" SVG, `aria-label`/`title` = "Settings"), and footer "Clear" is `btn btn-link`.
 
 ## Structure
 
@@ -60,7 +60,8 @@ src/
   lib/tabler.ts             # sets window.VanillaCalendarPro, re-exports Tabler Datepicker, Modal
   components/
     AppSkeleton.tsx         # text-free placeholder-glow copy of the card shown during startup
-    DateInput.tsx           # Tabler datepicker wrapper (ISO value, shows "DD. MM. YYYY")
+    ChoiceText.tsx          # current choice as text; Bootstrap/Tabler dropdown (data-bs-toggle) with the options
+    DateInput.tsx           # date as text ("DD. MM. YYYY"); dropdown with an inline Tabler datepicker (ISO value)
     TicketAutocomplete.tsx  # debounced Jira issue search; value is the issue key only
   features/settings/
     settingsApi.ts          # getSettings / saveSettings ({ jiraUrl, hasToken, language }; empty token = keep)
@@ -79,8 +80,14 @@ src/
 
 Each worklog is an entry block: a `card-body` inside `.worklog-entries`, even ones striped like `.table-striped`.
 Labels sit above inputs (`form-label`, not floating). Each block has a header with `#n` and Delete (disabled while
-there is only one entry), then three lines: Date / Issue / Type; Description (full width); Worked / Billable / Work
-location / ORWH. ORWH is a checkbox labelled "ORWH", centred in its column.
+there is only one entry), then two lines, so the fields that change per entry sit together:
+
+1. Issue / Description / Worked / Billable — inputs; Description takes the leftover width (`col-md`).
+2. Date / Type / Work location / ORWH — the rarely changed ones, shown as **plain text with a caret** (`.picker-text`)
+   with the label on its left, that opens a picker: Tabler datepicker (`DateInput`, can't be typed) or a Tabler
+   dropdown (`ChoiceText`). ORWH is a Yes/No choice (`common.yes` / `common.no`) over the boolean `orwh`. A `w-100`
+   break div starts the second line; its fields are `col-6` (two per line) below md, auto width (`col-md-auto`) above.
+
 Field ids are `${row.id}-<field>` so labels are clickable (`DateInput` / `TicketAutocomplete` take an `id` prop).
 
 - Defaults: Date = today, Type = `Development`, Work location = `Mikrografija`.
@@ -125,9 +132,12 @@ screen. The datepicker gets `locale` (`en-GB` / `sl-SI`) and is re-created when 
 
 - **Tabler Datepicker** (`@tabler/core` 1.6 `Datepicker`) wraps Vanilla Calendar Pro and silently does nothing unless
   `window.VanillaCalendarPro` is set before construction — always import `Datepicker` from `src/lib/tabler.ts`.
-  Calendar styles are already in `tabler.min.css`. The picker is created once per input (imperatively, uncontrolled
-  input, `readOnly`); value changes are pushed in with `setSelectedDates`, and picks arrive via the
-  `change.bs.datepicker` DOM event (`event.dates: string[]`).
+  Calendar styles are already in `tabler.min.css`. The picker is created once per locale (imperatively); value
+  changes are pushed in with `setSelectedDates`, and picks arrive via the `change.bs.datepicker` DOM event
+  (`event.dates: string[]`). `DateInput` uses it **inline**, inside a Tabler dropdown (`data-bs-auto-close="outside"`
+  so month navigation doesn't close it), on a `<div>` it creates itself outside React: Vanilla Calendar replaces the
+  element it's given with a clone, so a React-owned trigger would be detached (and the Data API would create a second,
+  unconfigured picker). Re-clicking the picked day deselects it in the calendar; `DateInput` keeps the date instead.
 - Importing `@tabler/core` JS pulls in all of Tabler/Bootstrap JS, hence Vite's >500 kB chunk warning. Known, harmless.
 - `TicketAutocomplete` debounces (250 ms, min 2 chars) so fast typing makes one request; RTK Query caches results
   per query for 5 min. The Tabler `input-icon` addon on the right of the input shows a search icon, replaced by a

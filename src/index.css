@@ -19,6 +19,25 @@ body,
     min-width: 0;
 }
 
+/* Date / Type / Work location: the current choice as plain text that opens a picker. */
+.picker-text {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--tblr-primary);
+    font-weight: var(--tblr-font-weight-semibold);
+    text-align: start;
+    cursor: pointer;
+}
+.picker-text:hover {
+    color: var(--tblr-primary-darken);
+}
+.picker-text:focus-visible {
+    outline: 2px solid var(--tblr-primary);
+    outline-offset: 2px;
+    border-radius: var(--tblr-border-radius-sm);
+}
+
 /* Striped entries, like Tabler's .table-striped (even rows). */
 .worklog-entries > .card-body:nth-child(even) {
     background-color: var(--tblr-bg-surface-tertiary);

@@ -6,6 +6,8 @@ export const en = {
         close: 'Close',
         cancel: 'Cancel',
         save: 'Save',
+        yes: 'Yes',
+        no: 'No',
     },
     worklog: {
         delete: 'Delete',

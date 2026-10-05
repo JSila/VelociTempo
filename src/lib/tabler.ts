@@ -10,4 +10,4 @@ declare global {
 // before any Datepicker is constructed.
 window.VanillaCalendarPro = VanillaCalendarPro
 
-export { Datepicker, Modal } from '@tabler/core'
+export { Datepicker, Dropdown, Modal } from '@tabler/core'

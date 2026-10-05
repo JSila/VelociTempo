@@ -7,6 +7,8 @@ export const sl: Dictionary<typeof en> = {
         close: 'Zapri',
         cancel: 'Prekliči',
         save: 'Shrani',
+        yes: 'Da',
+        no: 'Ne',
     },
     worklog: {
         delete: 'Izbriši',

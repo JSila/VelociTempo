@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { Datepicker } from '../lib/tabler'
+import { Datepicker, Dropdown } from '../lib/tabler'
 
 const pad = (n: number) => String(n).padStart(2, '0')
 const formatDate = (d: Date) => `${pad(d.getDate())}. ${pad(d.getMonth() + 1)}. ${d.getFullYear()}`
@@ -21,9 +21,13 @@ interface Props {
     placeholder?: string
 }
 
-/** Tabler datepicker bound to an ISO date; shows the date as "DD. MM. YYYY". */
+/**
+ * The date shown as text ("DD. MM. YYYY"); clicking it opens a Tabler dropdown with an inline Tabler datepicker.
+ * The calendar renders into an element created here, outside React: Vanilla Calendar replaces the element it's given.
+ */
 export function DateInput({ id, value, onChange, invalid, locale, placeholder }: Props) {
-    const inputRef = useRef<HTMLInputElement>(null)
+    const buttonRef = useRef<HTMLButtonElement>(null)
+    const hostRef = useRef<HTMLDivElement>(null)
     const pickerRef = useRef<Datepicker | null>(null)
     const onChangeRef = useRef(onChange)
     onChangeRef.current = onChange
@@ -31,23 +35,29 @@ export function DateInput({ id, value, onChange, invalid, locale, placeholder }:
     valueRef.current = value
 
     useEffect(() => {
-        const input = inputRef.current!
-        const picker = new Datepicker(input, {
-            dateFormat: formatDate,
+        const host = hostRef.current!
+        const element = document.createElement('div')
+        host.append(element)
+        const picker = new Datepicker(element, {
+            inline: true,
             firstWeekday: 1,
             locale,
             selectedDates: valueRef.current ? [valueRef.current] : [],
         })
         pickerRef.current = picker
         const handleChange = (e: Event) => {
-            const [date = ''] = (e as Event & { dates: string[] }).dates
-            onChangeRef.current(date)
+            const [date] = (e as Event & { dates: string[] }).dates
+            // Clicking the picked day again deselects it; keep the date instead.
+            if (date) onChangeRef.current(date)
+            else picker.setSelectedDates(valueRef.current ? [valueRef.current] : [])
+            ;(Dropdown.getOrCreateInstance(buttonRef.current!) as Dropdown).hide()
         }
-        input.addEventListener('change.bs.datepicker', handleChange)
+        element.addEventListener('change.bs.datepicker', handleChange)
         return () => {
-            input.removeEventListener('change.bs.datepicker', handleChange)
+            element.removeEventListener('change.bs.datepicker', handleChange)
             picker.dispose()
             pickerRef.current = null
+            host.replaceChildren()
         }
         // Created once per locale; value changes are pushed in below.
     }, [locale])
@@ -58,14 +68,23 @@ export function DateInput({ id, value, onChange, invalid, locale, placeholder }:
     }, [value])
 
     return (
-        <input
-            ref={inputRef}
-            id={id}
-            type="text"
-            className={`form-control ${invalid ? 'is-invalid' : ''}`}
-            placeholder={placeholder}
-            autoComplete="off"
-            readOnly
-        />
+        <div className="dropdown">
+            <button
+                ref={buttonRef}
+                id={id}
+                type="button"
+                className={`picker-text dropdown-toggle ${invalid ? 'text-danger' : value ? '' : 'text-secondary'}`}
+                data-bs-toggle="dropdown"
+                // Month navigation inside the calendar must not close it.
+                data-bs-auto-close="outside"
+                aria-expanded="false"
+                aria-invalid={invalid || undefined}
+            >
+                {value ? formatIsoDate(value) : placeholder}
+            </button>
+            <div className="dropdown-menu p-0">
+                <div ref={hostRef} />
+            </div>
+        </div>
     )
 }

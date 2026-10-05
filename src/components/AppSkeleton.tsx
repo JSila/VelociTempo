@@ -9,12 +9,19 @@ export function AppSkeleton() {
             <span className="placeholder skeleton-field" />
         </div>
     )
+    // Date / Type / Work location / ORWH: a label left of plain text.
+    const choice = () => (
+        <div className="col-6 col-md-auto d-flex gap-2" style={{ minWidth: '10rem' }}>
+            <span className="placeholder col-4" />
+            <span className="placeholder col-5" />
+        </div>
+    )
     return (
         <div className="card placeholder-glow" aria-busy="true">
             <div className="card-header">
                 <h2 className="card-title strong">VelociTempo</h2>
                 <div className="card-actions">
-                    <span className="btn disabled placeholder" style={{ width: '5.5rem' }} />
+                    <span className="btn btn-icon disabled placeholder" />
                 </div>
             </div>
             <div className="card-body">
@@ -24,13 +31,14 @@ export function AppSkeleton() {
                 </div>
                 <div className="row g-3">
                     {field('col-sm-6 col-md-3')}
-                    {field('col-sm-6 col-md-5')}
-                    {field('col-md-4')}
-                    {field('col-12')}
-                    {field('col-6 col-md-3')}
-                    {field('col-6 col-md-3')}
-                    {field('col-sm-8 col-md-4')}
-                    {field('col-sm-4 col-md-2')}
+                    {field('col-sm-6 col-md')}
+                    {field('col-6 col-md-2')}
+                    {field('col-6 col-md-2')}
+                    <div className="w-100 mt-0" />
+                    {choice()}
+                    {choice()}
+                    {choice()}
+                    {choice()}
                 </div>
             </div>
             <div className="card-footer d-flex align-items-center justify-content-between">

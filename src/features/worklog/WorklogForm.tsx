@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { describeError, errorMessage } from '../../app/api'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
+import { ChoiceText } from '../../components/ChoiceText'
 import { DateInput } from '../../components/DateInput'
 import { TicketAutocomplete } from '../../components/TicketAutocomplete'
 import { useT } from '../../i18n'
@@ -8,10 +9,12 @@ import { useGetSettingsQuery } from '../settings/settingsApi'
 import { SettingsModal } from '../settings/SettingsModal'
 import { LoggedSummary, type LoggedWorklog } from './LoggedSummary'
 import { formatMinutes, isValidDuration, normalizeDuration, parseDuration } from './duration'
-import { WORK_LOCATIONS, WORK_TYPES, type WorkLocation, type WorkType, type WorklogRow } from './types'
+import { WORK_LOCATIONS, WORK_TYPES, type WorklogRow } from './types'
 import { useSubmitWorklogsMutation } from './worklogApi'
 import { rowRemoved, rowsReset, rowUpdated, selectRows } from './worklogSlice'
 import { isRowBlank, isRowComplete } from './validation'
+
+const YES_NO = ['yes', 'no'] as const
 
 export function WorklogForm() {
     const dispatch = useAppDispatch()
@@ -95,13 +98,35 @@ export function WorklogForm() {
 
     return (
         <>
-            <form className="card card-gradient" onSubmit={onSubmit} noValidate>
+            <form className="card" onSubmit={onSubmit} noValidate>
                 <div className="card-status-top bg-blue"></div>
                 <div className="card-header">
                     <h2 className="card-title strong">VelociTempo</h2>
                     <div className="card-actions">
-                        <button type="button" className="btn" onClick={() => setSettingsOpen(true)}>
-                            {t('common.settings')}
+                        <button
+                            type="button"
+                            className="btn btn-icon"
+                            onClick={() => setSettingsOpen(true)}
+                            aria-label={t('common.settings')}
+                            title={t('common.settings')}
+                        >
+                            {/* Tabler icon "settings" */}
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="icon"
+                                width="24"
+                                height="24"
+                                viewBox="0 0 24 24"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                aria-hidden="true"
+                            >
+                                <path d="M10.325 4.317c.426 -1.756 2.924 -1.756 3.35 0a1.724 1.724 0 0 0 2.573 1.066c1.543 -.94 3.31 .826 2.37 2.37a1.724 1.724 0 0 0 1.065 2.572c1.756 .426 1.756 2.924 0 3.35a1.724 1.724 0 0 0 -1.066 2.573c.94 1.543 -.826 3.31 -2.37 2.37a1.724 1.724 0 0 0 -2.572 1.065c-.426 1.756 -2.924 1.756 -3.35 0a1.724 1.724 0 0 0 -2.573 -1.066c-1.543 .94 -3.31 -.826 -2.37 -2.37a1.724 1.724 0 0 0 -1.065 -2.572c-1.756 -.426 -1.756 -2.924 0 -3.35a1.724 1.724 0 0 0 1.066 -2.573c-.94 -1.543 .826 -3.31 2.37 -2.37c1 .608 2.296 .07 2.572 -1.065z" />
+                                <path d="M9 12a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" />
+                            </svg>
                         </button>
                     </div>
                     <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
@@ -150,21 +175,8 @@ export function WorklogForm() {
                                     </div>
                                 )}
                                 <div className="row g-3">
-                                    <div className="col-sm-6 col-md-3">
-                                        <label className="form-label" htmlFor={id('date')}>
-                                            {t('worklog.date')}
-                                        </label>
-                                        <DateInput
-                                            id={id('date')}
-                                            locale={tr.locale}
-                                            placeholder={t('date.placeholder')}
-                                            value={row.date}
-                                            invalid={showErrors && !row.date}
-                                            onChange={(date) => update(row.id, 'date', date)}
-                                        />
-                                    </div>
                                     <div
-                                        className={`col-sm-6 col-md-5 ${showErrors && !row.ticket ? 'ticket-invalid' : ''}`}
+                                        className={`col-sm-6 col-md-3 ${showErrors && !row.ticket ? 'ticket-invalid' : ''}`}
                                     >
                                         <label className="form-label" htmlFor={id('ticket')}>
                                             {t('worklog.issue')}
@@ -175,24 +187,7 @@ export function WorklogForm() {
                                             onChange={(key) => update(row.id, 'ticket', key)}
                                         />
                                     </div>
-                                    <div className="col-md-4">
-                                        <label className="form-label" htmlFor={id('type')}>
-                                            {t('worklog.type')}
-                                        </label>
-                                        <select
-                                            id={id('type')}
-                                            className="form-select"
-                                            value={row.type}
-                                            onChange={(e) => update(row.id, 'type', e.target.value as WorkType)}
-                                        >
-                                            {WORK_TYPES.map((type) => (
-                                                <option key={type} value={type}>
-                                                    {t(`worklog.types.${type}`)}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="col-12">
+                                    <div className="col-sm-6 col-md">
                                         <label className="form-label" htmlFor={id('description')}>
                                             {t('worklog.description')}
                                         </label>
@@ -204,7 +199,7 @@ export function WorklogForm() {
                                             onChange={(e) => update(row.id, 'description', e.target.value)}
                                         />
                                     </div>
-                                    <div className="col-6 col-md-3">
+                                    <div className="col-6 col-md-2">
                                         <label className="form-label" htmlFor={id('worked')}>
                                             {t('worklog.worked')}
                                         </label>
@@ -221,7 +216,7 @@ export function WorklogForm() {
                                             }}
                                         />
                                     </div>
-                                    <div className="col-6 col-md-3">
+                                    <div className="col-6 col-md-2">
                                         <label className="form-label" htmlFor={id('billable')}>
                                             {t('worklog.billable')}
                                         </label>
@@ -238,35 +233,60 @@ export function WorklogForm() {
                                             }}
                                         />
                                     </div>
-                                    <div className="col-sm-8 col-md-4">
-                                        <label className="form-label" htmlFor={id('location')}>
-                                            {t('worklog.workLocation')}
+                                    {/* Line 2: the rarely changed fields, shown as text with the label on its left. */}
+                                    <div className="w-100 mt-0" />
+                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
+                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('date')}>
+                                            {t('worklog.date')}:
                                         </label>
-                                        <select
-                                            id={id('location')}
-                                            className="form-select"
-                                            value={row.workLocation}
-                                            onChange={(e) =>
-                                                update(row.id, 'workLocation', e.target.value as WorkLocation)
-                                            }
-                                        >
-                                            {WORK_LOCATIONS.map((l) => (
-                                                <option key={l} value={l}>
-                                                    {t(`worklog.locations.${l}`)}
-                                                </option>
-                                            ))}
-                                        </select>
+                                        <DateInput
+                                            id={id('date')}
+                                            locale={tr.locale}
+                                            placeholder={t('date.placeholder')}
+                                            value={row.date}
+                                            invalid={showErrors && !row.date}
+                                            onChange={(date) => update(row.id, 'date', date)}
+                                        />
                                     </div>
-                                    <div className="col-sm-4 col-md-2 d-flex align-items-center justify-content-center">
-                                        <label className="form-check mb-0" title={t('worklog.orwhTitle')}>
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={row.orwh}
-                                                onChange={(e) => update(row.id, 'orwh', e.target.checked)}
-                                            />
-                                            <span className="form-check-label">{t('worklog.orwh')}</span>
+                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
+                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('type')}>
+                                            {t('worklog.type')}:
                                         </label>
+                                        <ChoiceText
+                                            id={id('type')}
+                                            value={row.type}
+                                            options={WORK_TYPES}
+                                            label={(type) => t(`worklog.types.${type}`)}
+                                            onChange={(type) => update(row.id, 'type', type)}
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
+                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('location')}>
+                                            {t('worklog.workLocation')}:
+                                        </label>
+                                        <ChoiceText
+                                            id={id('location')}
+                                            value={row.workLocation}
+                                            options={WORK_LOCATIONS}
+                                            label={(l) => t(`worklog.locations.${l}`)}
+                                            onChange={(l) => update(row.id, 'workLocation', l)}
+                                        />
+                                    </div>
+                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
+                                        <label
+                                            className="form-label mb-0 text-nowrap"
+                                            htmlFor={id('orwh')}
+                                            title={t('worklog.orwhTitle')}
+                                        >
+                                            {t('worklog.orwh')}:
+                                        </label>
+                                        <ChoiceText
+                                            id={id('orwh')}
+                                            value={row.orwh ? 'yes' : 'no'}
+                                            options={YES_NO}
+                                            label={(answer) => t(`common.${answer}`)}
+                                            onChange={(answer) => update(row.id, 'orwh', answer === 'yes')}
+                                        />
                                     </div>
                                 </div>
                             </div>
