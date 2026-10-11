@@ -16,7 +16,7 @@ const DEFAULT_ADDR: &str = "127.0.0.1:3000";
 
 /// Logs work to Jira Tempo. Listens on VELOCITEMPO_ADDR (default 127.0.0.1:3000).
 #[derive(Parser)]
-#[command(version, about)]
+#[command(name = "velocitempo", version, about)]
 struct Args {
     /// Open the UI in the default browser once listening.
     // Only release builds serve the UI; in development it comes from Vite.
