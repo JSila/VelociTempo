@@ -1,0 +1,31 @@
+{
+    "name": "velocitempo-ui",
+    "private": true,
+    "version": "0.1.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc -b && vite build",
+        "release": "yarn build && cargo build --release --manifest-path ../api/Cargo.toml --features embed-ui",
+        "typecheck": "tsc -b",
+        "preview": "vite preview",
+        "format": "prettier --write .",
+        "format:check": "prettier --check ."
+    },
+    "dependencies": {
+        "@reduxjs/toolkit": "^2.13.0",
+        "@tabler/core": "^1.6.1",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0",
+        "react-redux": "^9.3.0",
+        "vanilla-calendar-pro": "^3.4.0"
+    },
+    "devDependencies": {
+        "@types/react": "^19.3.0",
+        "@types/react-dom": "^19.3.0",
+        "@vitejs/plugin-react": "^6.1.1",
+        "prettier": "^3.9.9",
+        "typescript": "^7.0.2",
+        "vite": "^8.3.2"
+    }
+}

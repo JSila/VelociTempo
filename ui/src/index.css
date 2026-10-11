@@ -1,0 +1,74 @@
+html,
+body,
+#root {
+    height: 100%;
+}
+
+.ticket-invalid .form-control {
+    border-color: var(--tblr-form-invalid-border-color);
+}
+
+.ticket-menu {
+    min-width: 22rem;
+    max-height: 18rem;
+    overflow-y: auto;
+}
+
+.ticket-menu .dropdown-item {
+    display: flex;
+    min-width: 0;
+}
+
+/* Date / Type / Work location: the current choice as plain text that opens a picker. */
+.picker-text {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--tblr-primary);
+    font-weight: var(--tblr-font-weight-semibold);
+    text-align: start;
+    cursor: pointer;
+}
+.picker-text:hover {
+    color: var(--tblr-primary-darken);
+}
+.picker-text:focus-visible {
+    outline: 2px solid var(--tblr-primary);
+    outline-offset: 2px;
+    border-radius: var(--tblr-border-radius-sm);
+}
+
+/* Striped entries, like Tabler's .table-striped (even rows). */
+.worklog-entries > .card-body:nth-child(even) {
+    background-color: var(--tblr-bg-surface-tertiary);
+}
+
+/* Ladda-like loading button: the label fades out while the spinner fades and scales in; the width never changes. */
+.btn-primary {
+    transition:
+        color 0.2s ease,
+        background-color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+}
+.btn-loading:disabled {
+    opacity: 1;
+}
+.btn-loading::after {
+    animation:
+        spinner-border 0.75s linear infinite,
+        btn-spinner-in 0.2s ease-out;
+}
+@keyframes btn-spinner-in {
+    from {
+        opacity: 0;
+        scale: 0.4;
+    }
+}
+
+/* Startup skeleton: input-sized bars. */
+.skeleton-field {
+    display: block;
+    height: calc(1.25rem + 1.125rem + 2px);
+    border-radius: var(--tblr-border-radius);
+}
