@@ -4,7 +4,7 @@ import { api } from '../../app/api'
 export interface JiraSettings {
     jiraUrl: string
     hasToken: boolean
-    /** `en` / `sl`; empty until the user picks one (the UI then follows the browser). */
+    /** `en` / `sl`; the backend defaults to `en`. */
     language: string
 }
 

@@ -1,4 +1,3 @@
-import { useEffect, useMemo } from 'react'
 import { useGetSettingsQuery } from '../features/settings/settingsApi'
 import { en } from './en'
 import { sl } from './sl'
@@ -32,7 +31,7 @@ function lookup(messages: Messages, key: string): unknown {
 const interpolate = (text: string, params: Params = {}) =>
     text.replace(/\{(\w+)\}/g, (match, name: string) => (name in params ? String(params[name]) : match))
 
-export function createTranslator(language: Language) {
+function createTranslator(language: Language) {
     const messages = DICTIONARIES[language]
     const locale = LANGUAGES.find((l) => l.code === language)!.locale
     const pluralRules = new Intl.PluralRules(locale)
@@ -55,16 +54,14 @@ export function createTranslator(language: Language) {
 
 export type Translator = ReturnType<typeof createTranslator>
 
+/** One translator per language, shared by every component. */
+const TRANSLATORS: Record<Language, Translator> = { en: createTranslator('en'), sl: createTranslator('sl') }
+
 export function useLanguage(): Language {
     const { data } = useGetSettingsQuery()
     return resolveLanguage(data?.language)
 }
 
 export function useT(): Translator {
-    const language = useLanguage()
-    const translator = useMemo(() => createTranslator(language), [language])
-    useEffect(() => {
-        document.documentElement.lang = language
-    }, [language])
-    return translator
+    return TRANSLATORS[useLanguage()]
 }

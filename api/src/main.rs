@@ -8,10 +8,22 @@ mod ui;
 
 use std::{sync::Arc, time::Duration};
 
+use clap::Parser;
 use tokio::sync::RwLock;
 use tracing_subscriber::EnvFilter;
 
 const DEFAULT_ADDR: &str = "127.0.0.1:3000";
+
+/// Logs work to Jira Tempo. Listens on VELOCITEMPO_ADDR (default 127.0.0.1:3000).
+#[derive(Parser)]
+#[command(version, about)]
+struct Args {
+    /// Open the UI in the default browser once listening.
+    // Only release builds serve the UI; in development it comes from Vite.
+    #[cfg(feature = "embed-ui")]
+    #[arg(long)]
+    open: bool,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -19,7 +31,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
         .init();
 
-    let open = parse_args()?;
+    let args = Args::parse();
     let settings_path = settings::path();
     let settings =
         settings::load(&settings_path).map_err(|e| format!("could not read {}: {e}", settings_path.display()))?;
@@ -36,24 +48,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let listener = tokio::net::TcpListener::bind(&addr).await?;
     tracing::info!("listening on http://{addr}");
     #[cfg(feature = "embed-ui")]
-    if open {
+    if args.open {
         ui::open_browser(listener.local_addr()?);
     }
     #[cfg(not(feature = "embed-ui"))]
-    let _ = open;
+    let _ = args;
     axum::serve(listener, routes::router(state)).await?;
     Ok(())
-}
-
-/// Returns whether `--open` was given: open the embedded UI in the default browser once listening. Only release
-/// builds (feature `embed-ui`) accept it; in development the UI comes from Vite.
-fn parse_args() -> Result<bool, String> {
-    let mut open = false;
-    for arg in std::env::args().skip(1) {
-        match arg.as_str() {
-            "--open" if cfg!(feature = "embed-ui") => open = true,
-            _ => return Err(format!("unknown argument {arg:?}")),
-        }
-    }
-    Ok(open)
 }

@@ -48,7 +48,7 @@ Jira/Tempo) and `VELOCITEMPO_API=http://localhost:3001 yarn dev --port <free>`. 
 ```
 src/
   main.tsx                  # Provider, imports tabler.min.css + index.css
-  App.tsx                   # page-center layout, container-narrow; AppSkeleton until settings (language) load
+  App.tsx                   # page-center layout, container-narrow; AppSkeleton until settings load; sets <html lang>
   index.css                 # entry striping, ticket dropdown, small overrides
   app/store.ts, hooks.ts    # store setup, typed hooks
   app/api.ts                # RTK Query base (`api`, endpoints injected per feature), errorMessage()/describeError()
@@ -56,8 +56,8 @@ src/
     en.ts                   # English dictionary — the reference shape; nested keys, {param} placeholders, plural()
     sl.ts                   # Slovenian, typed `Dictionary<typeof en>` so missing keys fail typecheck
     types.ts                # Plural, Dictionary, TextKey/PluralKey (typed dotted keys)
-    index.ts                # useT() → { t, tn, tryT, language, locale }, LANGUAGES, resolveLanguage()
-  lib/tabler.ts             # sets window.VanillaCalendarPro, re-exports Tabler Datepicker, Modal
+    index.ts                # useT() → { t, tn, tryT, language, locale } (one shared translator per language), LANGUAGES
+  lib/tabler.ts             # sets window.VanillaCalendarPro; Datepicker, Dropdown, Modal from Tabler's sources
   components/
     AppSkeleton.tsx         # text-free placeholder-glow copy of the card shown during startup
     ChoiceText.tsx          # current choice as text; Bootstrap/Tabler dropdown (data-bs-toggle) with the options
@@ -68,11 +68,12 @@ src/
     SettingsModal.tsx       # Tabler Modal (static backdrop), portalled to <body>; URL, token, language
   features/worklog/
     types.ts                # WorklogRow, WORK_TYPES, WORK_LOCATIONS, JiraIssue
-    worklogSlice.ts         # rows state (rowUpdated / rowRemoved / rowsReset)
+    worklogSlice.ts         # rows state (rowUpdated / rowRemoved / rowsRemoved / rowsReset)
     worklogApi.ts           # searchTickets, submitWorklogs
     validation.ts           # isRowComplete, isRowBlank
     duration.ts             # parse flexible input ("1.5", "1:30", "1h30m", "1d"=8h), normalise to "1h 30m"
-    WorklogForm.tsx         # the card + entry blocks + total + submit
+    WorklogForm.tsx         # the card: alerts, entry list, total, submit
+    WorklogEntry.tsx        # one entry block (memo; DurationInput, InlineField)
     LoggedSummary.tsx       # success alert below the card: what the last submit created, linked to <jiraUrl>/browse/KEY
 ```
 
@@ -99,6 +100,8 @@ Field ids are `${row.id}-<field>` so labels are clickable (`DateInput` / `Ticket
   numbers are hours, `d` = 8h, `w` = 5d (Jira defaults). The footer shows the total of Worked.
 - Worked and Billable are Jira duration strings. **Billable mirrors Worked** until the user edits it to a different
   value (handled in the `rowUpdated` reducer).
+- `WorklogEntry` is `memo`: unchanged rows keep their identity in the store, so only the edited entry re-renders.
+  Keep its props primitive or row-stable (no inline objects/callbacks from `WorklogForm`).
 - ORWH = "outside regular working hours" (Tempo checkbox attribute `_Outsideregularworkinghours_`).
 - **No "Add row" button**: when the last row becomes complete (`isRowComplete`: date, ticket, description, valid
   worked + billable), a blank row is appended automatically (`ensureTrailingRow`), copying date and location.
@@ -108,7 +111,7 @@ Field ids are `${row.id}-<field>` so labels are clickable (`DateInput` / `Ticket
   `LoggedSummary` below the card (dismissible, replaced by the next submit); failed ones stay with the Jira/Tempo error
   shown above their fields (`rowErrors`) and a count in the danger alert at the top of the card.
 - A warning alert shows while Jira isn't configured (no URL or no saved token).
-- Footer: total worked on the left; Clear (resets to one fresh entry, no confirmation) and Submit on the right.
+- Footer: total logged on the left; Clear (resets to one fresh entry, no confirmation) and Submit on the right.
 
 ## Backend API
 
@@ -124,8 +127,8 @@ add each new key to **both** `en.ts` and `sl.ts`. Plurals use `tn()` with `Intl.
 one/two/few/other). Type/Work location options are translated for display only (`worklog.types.<name>`,
 `worklog.locations.<name>`, keyed by the Tempo name); the `<option value>` and the state stay the Tempo name, which
 is what the backend matches. ORWH is "IRDČ" in Slovenian. Not translated: the product name and Jira duration syntax
-(`1h 30m`). `AppSkeleton` shows only language-neutral text (product name, `#1`) and placeholders for the rest. The language is saved in the backend settings (`language`), falls back to
-the browser language, then English; `App` shows `AppSkeleton` until settings load so the language never flips on
+(`1h 30m`). `AppSkeleton` shows only language-neutral text (product name, `#1`) and placeholders for the rest. The language is saved in the backend settings (`language`, `en` by default); only
+if settings can't be loaded does the UI fall back to the browser language, then English; `App` shows `AppSkeleton` until settings load so the language never flips on
 screen. The datepicker gets `locale` (`en-GB` / `sl-SI`) and is re-created when it changes.
 
 ## Gotchas
@@ -138,7 +141,11 @@ screen. The datepicker gets `locale` (`en-GB` / `sl-SI`) and is re-created when 
   so month navigation doesn't close it), on a `<div>` it creates itself outside React: Vanilla Calendar replaces the
   element it's given with a clone, so a React-owned trigger would be detached (and the Data API would create a second,
   unconfigured picker). Re-clicking the picked day deselects it in the calendar; `DateInput` keeps the date instead.
-- Importing `@tabler/core` JS pulls in all of Tabler/Bootstrap JS, hence Vite's >500 kB chunk warning. Known, harmless.
+- Don't import from the `@tabler/core` package entry: it pulls in all of Tabler/Bootstrap JS (~75 kB more, >500 kB
+  chunk warning). `src/lib/tabler.ts` imports single components from `@tabler/core/js/src/…` (TS sources, bundled by
+  Vite); `tsconfig.app.json` `paths` maps those to `dist/types` so tsc doesn't check Tabler's sources. Bootstrap's
+  Dropdown/Modal register their `data-bs-toggle`/`data-bs-dismiss` handlers on import. Need another component →
+  export it there the same way.
 - `TicketAutocomplete` debounces (250 ms, min 2 chars) so fast typing makes one request; RTK Query caches results
   per query for 5 min. The Tabler `input-icon` addon on the right of the input shows a search icon, replaced by a
   spinner while fetching; the menu stays hidden until the first results arrive. The menu must stay outside

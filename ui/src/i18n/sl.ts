@@ -32,7 +32,7 @@ export const sl: Dictionary<typeof en> = {
             Mikrografija: 'Mikrografija',
             'Home Office': 'Delo od doma',
         },
-        totalWorked: 'Skupaj opravljeno:',
+        totalLogged: 'Skupaj vneseno:',
         clear: 'Počisti',
         submit: 'Pošlji',
         submitting: 'Pošiljanje vnosov v Jiro',

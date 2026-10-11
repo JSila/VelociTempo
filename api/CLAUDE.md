@@ -19,7 +19,10 @@ Release is a single binary that also serves the UI: `cd ../ui && yarn release` (
 files from `dist` (`assets/*` cached immutable, the rest `no-cache`), unknown `/api/*` → 404, anything else →
 `index.html`. It also enables `velocitempo --open`, which opens the UI in the default browser once listening (`open`
 crate; failure only logs a warning). It's off by default; in development Vite serves the UI and proxies `/api`, and
-any argument, `--open` included, is rejected as unknown.
+`--open` is rejected as unknown. Arguments are parsed with clap (`Args` in `main.rs`; `--help`, `--version`).
+
+The token is a `secrecy::SecretString` everywhere (settings, `PUT` body, `Jira` client) so it can't leak through
+`Debug`/logs; `expose_secret()` only where it's sent to Jira or written to the settings file.
 
 Settings live in `$XDG_CONFIG_HOME/velocitempo.json` (default `~/.config/velocitempo.json`), written atomically with
 mode 0600 because it holds the token. For local testing point `XDG_CONFIG_HOME` at a temp dir, run a mock Jira (the
@@ -42,7 +45,7 @@ src/
 ## HTTP API (consumed by ../ui)
 
 - `GET /api/settings` → `{ jiraUrl, hasToken, language }` — the token is never returned; `language` is `en`/`sl` or
-  empty (not chosen yet).
+  defaults to `en` (also for older files that stored `""`).
 - `PUT /api/settings` `{ jiraUrl, jiraToken?, language? }` → same shape; empty/missing token and missing language keep
   the saved ones. URL is trimmed of trailing `/` and must be http(s); language must be one of `settings::LANGUAGES`.
 - `GET /api/tickets?q=` → `[{ key, summary }]` (max 20) via Jira's `GET /rest/api/2/issue/picker` with
@@ -65,10 +68,10 @@ src/
 - Create: `POST /rest/tempo-timesheets/4/worklogs` with `worker`, `originTaskId` (issue key), `started` (YYYY-MM-DD),
   `timeSpentSeconds`, `billableSeconds`, `comment`, `includeNonWorkingDays: true`, and `attributes`
   `{ <key>: { name, workAttributeId, value } }`.
-- Work attributes are read per submit from `GET /rest/tempo-core/1/work-attribute`. Keys on our Jira:
-  `_Type_` (static list), `_WorkLocation_` (static list), `_Outsideregularworkinghours_` (checkbox, value
-  `"true"`/`"false"`). The UI sends static-list **names** ("Home Office"); the backend maps them to Tempo **values**
-  ("HomeOffice") case-insensitively, skipping removed options.
+- Work attributes are read per submit from `GET /rest/tempo-core/1/work-attribute` (concurrently with `myself`).
+  Keys on our Jira: `_Type_` (static list), `_WorkLocation_` (static list), `_Outsideregularworkinghours_` (checkbox,
+  value `"true"`/`"false"`). The UI sends static-list **names** ("Home Office"); the backend maps them to Tempo
+  **values** ("HomeOffice") case-insensitively, skipping removed options.
 
 ### Inspecting Tempo attributes and their options
 

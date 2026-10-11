@@ -55,6 +55,11 @@ export const worklogSlice = createSlice({
             state.rows = state.rows.filter((r) => r.id !== action.payload)
             ensureTrailingRow(state.rows)
         },
+        rowsRemoved(state, action: PayloadAction<string[]>) {
+            const ids = new Set(action.payload)
+            state.rows = state.rows.filter((r) => !ids.has(r.id))
+            ensureTrailingRow(state.rows)
+        },
         rowUpdated(state, action: PayloadAction<RowUpdate>) {
             const { id, field, value } = action.payload
             const row = state.rows.find((r) => r.id === id)
@@ -70,6 +75,6 @@ export const worklogSlice = createSlice({
     },
 })
 
-export const { rowRemoved, rowUpdated, rowsReset } = worklogSlice.actions
+export const { rowRemoved, rowsRemoved, rowUpdated, rowsReset } = worklogSlice.actions
 
 export const selectRows = (state: RootState) => state.worklog.rows

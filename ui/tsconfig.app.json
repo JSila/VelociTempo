@@ -15,7 +15,12 @@
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        // src/lib/tabler.ts imports single components from Tabler's TS sources (smaller bundle); type them with the
+        // published declarations so tsc doesn't check those sources against our strict settings.
+        "paths": {
+            "@tabler/core/js/src/*": ["./node_modules/@tabler/core/dist/types/src/*"]
+        }
     },
     "include": ["src"]
 }

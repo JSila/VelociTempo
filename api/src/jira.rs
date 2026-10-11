@@ -2,6 +2,7 @@
 //! personal access token.
 
 use reqwest::{Client, RequestBuilder};
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 
@@ -12,7 +13,7 @@ const MAX_ISSUES: usize = 20;
 pub struct Jira<'a> {
     http: &'a Client,
     base_url: &'a str,
-    token: &'a str,
+    token: &'a SecretString,
 }
 
 #[derive(Serialize)]
@@ -41,7 +42,7 @@ pub struct StaticListValue {
 
 impl<'a> Jira<'a> {
     pub fn new(http: &'a Client, settings: &'a Settings) -> Result<Self, AppError> {
-        if settings.jira_url.is_empty() || settings.jira_token.is_empty() {
+        if settings.jira_url.is_empty() || settings.jira_token.expose_secret().is_empty() {
             return Err(AppError::NotConfigured);
         }
         Ok(Self {
@@ -124,7 +125,7 @@ impl<'a> Jira<'a> {
     }
 
     async fn send<T: DeserializeOwned>(&self, request: RequestBuilder) -> Result<T, AppError> {
-        let response = request.bearer_auth(self.token).send().await?;
+        let response = request.bearer_auth(self.token.expose_secret()).send().await?;
         let status = response.status();
         if status.is_success() {
             return Ok(response.json().await?);

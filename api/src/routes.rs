@@ -5,6 +5,7 @@ use axum::{
     extract::{Query, State},
     routing::get,
 };
+use secrecy::{ExposeSecret, SecretString};
 use serde::{Deserialize, Serialize};
 use serde_json::{Map, Value, json};
 use tokio::sync::RwLock;
@@ -54,7 +55,7 @@ impl From<&Settings> for SettingsView {
     fn from(s: &Settings) -> Self {
         Self {
             jira_url: s.jira_url.clone(),
-            has_token: !s.jira_token.is_empty(),
+            has_token: !s.jira_token.expose_secret().is_empty(),
             language: s.language.clone(),
         }
     }
@@ -66,7 +67,7 @@ struct SettingsUpdate {
     jira_url: String,
     /// Omitted or empty keeps the saved token.
     #[serde(default)]
-    jira_token: Option<String>,
+    jira_token: Option<SecretString>,
     /// Omitted keeps the saved language.
     #[serde(default)]
     language: Option<String>,
@@ -93,8 +94,13 @@ async fn put_settings(
     let mut settings = state.settings.write().await;
     let mut next = settings.clone();
     next.jira_url = jira_url;
-    if let Some(token) = update.jira_token.map(|t| t.trim().to_owned()).filter(|t| !t.is_empty()) {
-        next.jira_token = token;
+    if let Some(token) = update
+        .jira_token
+        .as_ref()
+        .map(|t| t.expose_secret().trim())
+        .filter(|t| !t.is_empty())
+    {
+        next.jira_token = token.into();
     }
     if let Some(language) = update.language {
         next.language = language;
@@ -158,8 +164,7 @@ async fn create_worklogs(
 ) -> Result<Json<WorklogsResponse>, AppError> {
     let settings = state.settings.read().await.clone();
     let jira = Jira::new(&state.http, &settings)?;
-    let worker = jira.my_user_key().await?;
-    let attributes = jira.work_attributes().await?;
+    let (worker, attributes) = tokio::try_join!(jira.my_user_key(), jira.work_attributes())?;
 
     let mut results = Vec::with_capacity(request.worklogs.len());
     // Sequential on purpose: keeps Tempo's per-day validation (e.g. daily limits) deterministic.

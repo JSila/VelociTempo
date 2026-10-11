@@ -32,7 +32,7 @@ export const en = {
             Mikrografija: 'Mikrografija',
             'Home Office': 'Home Office',
         },
-        totalWorked: 'Total worked:',
+        totalLogged: 'Total logged:',
         clear: 'Clear',
         submit: 'Submit',
         submitting: 'Sending worklogs to Jira',

@@ -1,20 +1,15 @@
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { describeError, errorMessage } from '../../app/api'
 import { useAppDispatch, useAppSelector } from '../../app/hooks'
-import { ChoiceText } from '../../components/ChoiceText'
-import { DateInput } from '../../components/DateInput'
-import { TicketAutocomplete } from '../../components/TicketAutocomplete'
 import { useT } from '../../i18n'
 import { useGetSettingsQuery } from '../settings/settingsApi'
 import { SettingsModal } from '../settings/SettingsModal'
 import { LoggedSummary, type LoggedWorklog } from './LoggedSummary'
-import { formatMinutes, isValidDuration, normalizeDuration, parseDuration } from './duration'
-import { WORK_LOCATIONS, WORK_TYPES, type WorklogRow } from './types'
+import { formatMinutes, normalizeDuration, parseDuration } from './duration'
 import { useSubmitWorklogsMutation } from './worklogApi'
-import { rowRemoved, rowsReset, rowUpdated, selectRows } from './worklogSlice'
+import { WorklogEntry } from './WorklogEntry'
+import { rowsRemoved, rowsReset, selectRows } from './worklogSlice'
 import { isRowBlank, isRowComplete } from './validation'
-
-const YES_NO = ['yes', 'no'] as const
 
 export function WorklogForm() {
     const dispatch = useAppDispatch()
@@ -33,10 +28,7 @@ export function WorklogForm() {
     const { data: settings, isError: settingsFailed } = useGetSettingsQuery()
     const notConfigured = settings !== undefined && (!settings.jiraUrl || !settings.hasToken)
 
-    const update = <K extends keyof Omit<WorklogRow, 'id'>>(id: string, field: K, value: WorklogRow[K]) =>
-        dispatch(rowUpdated({ id, field, value } as Parameters<typeof rowUpdated>[0]))
-
-    const totalWorked = rows.reduce((sum, r) => sum + (parseDuration(r.worked) ?? 0), 0)
+    const totalLogged = rows.reduce((sum, r) => sum + (parseDuration(r.worked) ?? 0), 0)
 
     function clear() {
         dispatch(rowsReset())
@@ -83,11 +75,11 @@ export function WorklogForm() {
                 return
             }
             // Drop what was created so a resubmit can't duplicate it; keep failed entries with their error.
+            dispatch(rowsRemoved(created.map((r) => r.id)))
             const errors: Record<string, string> = {}
             filled.forEach((row, i) => {
                 const r = res.results[i]
-                if (r?.ok) dispatch(rowRemoved(row.id))
-                else errors[row.id] = r ? describeError(r, tr) : t('worklog.notCreated')
+                if (!r?.ok) errors[row.id] = r ? describeError(r, tr) : t('worklog.notCreated')
             })
             setRowErrors(errors)
             setSubmitError(tr.tn('worklog.someFailed', filled.length - created.length))
@@ -131,171 +123,26 @@ export function WorklogForm() {
                     </div>
                     <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
                 </div>
-                {notConfigured && !submitError && (
-                    <div className="card-body pb-0">
-                        <div className="alert alert-warning mb-0" role="alert">
-                            {t('worklog.notConfigured')}
-                        </div>
-                    </div>
-                )}
+                {notConfigured && !submitError && <CardAlert variant="warning">{t('worklog.notConfigured')}</CardAlert>}
                 {settingsFailed && !submitError && (
-                    <div className="card-body pb-0">
-                        <div className="alert alert-danger mb-0" role="alert">
-                            {t('errors.serverUnreachable')}
-                        </div>
-                    </div>
+                    <CardAlert variant="danger">{t('errors.serverUnreachable')}</CardAlert>
                 )}
-                {submitError && (
-                    <div className="card-body pb-0">
-                        <div className="alert alert-danger mb-0" role="alert">
-                            {submitError}
-                        </div>
-                    </div>
-                )}
+                {submitError && <CardAlert variant="danger">{submitError}</CardAlert>}
                 <div className="worklog-entries">
-                    {rows.map((row, index) => {
-                        const showErrors = checkedRows[row.id]
-                        const id = (field: string) => `${row.id}-${field}`
-                        return (
-                            <div key={row.id} className="card-body">
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                    <span className="text-secondary fw-medium">#{index + 1}</span>
-                                    <button
-                                        type="button"
-                                        className="btn"
-                                        onClick={() => dispatch(rowRemoved(row.id))}
-                                        disabled={rows.length === 1}
-                                    >
-                                        {t('worklog.delete')}
-                                    </button>
-                                </div>
-                                {rowErrors[row.id] && (
-                                    <div className="text-danger mb-2" role="alert">
-                                        {rowErrors[row.id]}
-                                    </div>
-                                )}
-                                <div className="row g-3">
-                                    <div
-                                        className={`col-sm-6 col-md-3 ${showErrors && !row.ticket ? 'ticket-invalid' : ''}`}
-                                    >
-                                        <label className="form-label" htmlFor={id('ticket')}>
-                                            {t('worklog.issue')}
-                                        </label>
-                                        <TicketAutocomplete
-                                            id={id('ticket')}
-                                            value={row.ticket}
-                                            onChange={(key) => update(row.id, 'ticket', key)}
-                                        />
-                                    </div>
-                                    <div className="col-sm-6 col-md">
-                                        <label className="form-label" htmlFor={id('description')}>
-                                            {t('worklog.description')}
-                                        </label>
-                                        <input
-                                            id={id('description')}
-                                            type="text"
-                                            className={`form-control ${showErrors && !row.description.trim() ? 'is-invalid' : ''}`}
-                                            value={row.description}
-                                            onChange={(e) => update(row.id, 'description', e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="col-6 col-md-2">
-                                        <label className="form-label" htmlFor={id('worked')}>
-                                            {t('worklog.worked')}
-                                        </label>
-                                        <input
-                                            id={id('worked')}
-                                            type="text"
-                                            className={`form-control ${showErrors && !isValidDuration(row.worked) ? 'is-invalid' : ''}`}
-                                            placeholder="1h 30m"
-                                            value={row.worked}
-                                            onChange={(e) => update(row.id, 'worked', e.target.value)}
-                                            onBlur={(e) => {
-                                                const normalized = normalizeDuration(e.target.value)
-                                                if (normalized !== row.worked) update(row.id, 'worked', normalized)
-                                            }}
-                                        />
-                                    </div>
-                                    <div className="col-6 col-md-2">
-                                        <label className="form-label" htmlFor={id('billable')}>
-                                            {t('worklog.billable')}
-                                        </label>
-                                        <input
-                                            id={id('billable')}
-                                            type="text"
-                                            className={`form-control ${showErrors && !isValidDuration(row.billable) ? 'is-invalid' : ''}`}
-                                            placeholder="1h 30m"
-                                            value={row.billable}
-                                            onChange={(e) => update(row.id, 'billable', e.target.value)}
-                                            onBlur={(e) => {
-                                                const normalized = normalizeDuration(e.target.value)
-                                                if (normalized !== row.billable) update(row.id, 'billable', normalized)
-                                            }}
-                                        />
-                                    </div>
-                                    {/* Line 2: the rarely changed fields, shown as text with the label on its left. */}
-                                    <div className="w-100 mt-0" />
-                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
-                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('date')}>
-                                            {t('worklog.date')}:
-                                        </label>
-                                        <DateInput
-                                            id={id('date')}
-                                            locale={tr.locale}
-                                            placeholder={t('date.placeholder')}
-                                            value={row.date}
-                                            invalid={showErrors && !row.date}
-                                            onChange={(date) => update(row.id, 'date', date)}
-                                        />
-                                    </div>
-                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
-                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('type')}>
-                                            {t('worklog.type')}:
-                                        </label>
-                                        <ChoiceText
-                                            id={id('type')}
-                                            value={row.type}
-                                            options={WORK_TYPES}
-                                            label={(type) => t(`worklog.types.${type}`)}
-                                            onChange={(type) => update(row.id, 'type', type)}
-                                        />
-                                    </div>
-                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
-                                        <label className="form-label mb-0 text-nowrap" htmlFor={id('location')}>
-                                            {t('worklog.workLocation')}:
-                                        </label>
-                                        <ChoiceText
-                                            id={id('location')}
-                                            value={row.workLocation}
-                                            options={WORK_LOCATIONS}
-                                            label={(l) => t(`worklog.locations.${l}`)}
-                                            onChange={(l) => update(row.id, 'workLocation', l)}
-                                        />
-                                    </div>
-                                    <div className="col-6 col-md-auto d-flex flex-wrap align-items-baseline column-gap-2">
-                                        <label
-                                            className="form-label mb-0 text-nowrap"
-                                            htmlFor={id('orwh')}
-                                            title={t('worklog.orwhTitle')}
-                                        >
-                                            {t('worklog.orwh')}:
-                                        </label>
-                                        <ChoiceText
-                                            id={id('orwh')}
-                                            value={row.orwh ? 'yes' : 'no'}
-                                            options={YES_NO}
-                                            label={(answer) => t(`common.${answer}`)}
-                                            onChange={(answer) => update(row.id, 'orwh', answer === 'yes')}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        )
-                    })}
+                    {rows.map((row, index) => (
+                        <WorklogEntry
+                            key={row.id}
+                            row={row}
+                            index={index}
+                            canDelete={rows.length > 1}
+                            showErrors={!!checkedRows[row.id]}
+                            error={rowErrors[row.id]}
+                        />
+                    ))}
                 </div>
                 <div className="card-footer d-flex align-items-center justify-content-between">
                     <div className="text-secondary">
-                        {t('worklog.totalWorked')} <strong className="text-body">{formatMinutes(totalWorked)}</strong>
+                        {t('worklog.totalLogged')} <strong className="text-body">{formatMinutes(totalLogged)}</strong>
                     </div>
                     <div className="d-flex gap-2">
                         <button type="button" className="btn btn-link" onClick={clear} disabled={isLoading}>
@@ -318,5 +165,16 @@ export function WorklogForm() {
                 <LoggedSummary worklogs={logged} jiraUrl={settings.jiraUrl} onDismiss={() => setLogged(null)} />
             )}
         </>
+    )
+}
+
+/** Alert at the top of the card. */
+function CardAlert({ variant, children }: { variant: 'warning' | 'danger'; children: ReactNode }) {
+    return (
+        <div className="card-body pb-0">
+            <div className={`alert alert-${variant} mb-0`} role="alert">
+                {children}
+            </div>
+        </div>
     )
 }
