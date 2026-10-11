@@ -42,7 +42,7 @@ Open the URL Vite prints, click **Settings** and enter your Jira URL and persona
 | ----------------- | ------- | ---------------- | ------------------------------------------- |
 | `VELOCITEMPO_ADDR` | api     | `127.0.0.1:3000` | Address the backend listens on              |
 | `VELOCITEMPO_API`  | ui      | `http://localhost:3000` | Backend the Vite dev server proxies `/api` to |
-| `XDG_CONFIG_HOME` | api     | `~/.config`      | Folder that holds `velocitempo.json`        |
+| `XDG_CONFIG_HOME` | api     | `~/.config`      | Folder that holds `velocitempo.json` (Linux) |
 | `RUST_LOG`        | api     | `info`           | Log level, e.g. `RUST_LOG=debug`            |
 
 Settings (Jira URL, token, language) are saved in `$XDG_CONFIG_HOME/velocitempo.json` with mode `0600`. The token is
@@ -90,5 +90,26 @@ Run it:
 ./velocitempo --help
 ```
 
-Copy the binary anywhere, for example `~/.local/bin/`. It needs no other files. Settings are read from and saved to
-`~/.config/velocitempo.json`, the same as in development. Use `VELOCITEMPO_ADDR` to listen on a different address.
+Copy the binary anywhere, for example `~/.local/bin/`. It needs no other files. Use `VELOCITEMPO_ADDR` to listen on a
+different address. Settings are saved in `velocitempo.json` in the OS config folder:
+
+| OS      | Settings file                                              |
+| ------- | ---------------------------------------------------------- |
+| Linux   | `~/.config/velocitempo.json` (or `$XDG_CONFIG_HOME`)       |
+| macOS   | `~/Library/Application Support/velocitempo.json`           |
+| Windows | `%APPDATA%\velocitempo.json`                               |
+
+### Prebuilt binaries
+
+Every push to `master` builds the release binary for Linux, macOS and Windows and publishes it as the
+[latest release](https://github.com/JSila/VelociTempo/releases/latest)
+(`.github/workflows/release.yml`). There are no version numbers; the files are replaced on each build, and these links
+always point to the newest one:
+
+- [Linux x86_64](https://github.com/JSila/VelociTempo/releases/latest/download/velocitempo-linux-x86_64.tar.gz)
+- [macOS Apple silicon](https://github.com/JSila/VelociTempo/releases/latest/download/velocitempo-macos-arm64.tar.gz)
+- [macOS Intel](https://github.com/JSila/VelociTempo/releases/latest/download/velocitempo-macos-x86_64.tar.gz)
+- [Windows x86_64](https://github.com/JSila/VelociTempo/releases/latest/download/velocitempo-windows-x86_64.zip)
+
+The macOS binary isn't signed. If macOS refuses to run it, remove the quarantine flag:
+`xattr -d com.apple.quarantine velocitempo`.
